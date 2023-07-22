@@ -1,6 +1,6 @@
 #
 # sfml-nuget.ps1
-# v2_2.5.1
+# v2_2.6.0
 #
 
 #########################
@@ -14,14 +14,14 @@ $add_docs = $false # Add docs in system module, $false by default
 $pkg_hotfix = "" # Packages hotfix version, "" by default [means no hotfix]
 
 # SFML packages variables
-$sfml_owners =	"username" # Packages "owner" name. Replace username with your name
-$sfml_tags = "sfml, C++, graphics, multimedia, games, opengl, audio, native, CoApp" # Tags for your packages, "sfml, C++, graphics, multimedia, games, opengl, audio, native, CoApp" by default
+$sfml_owners =	"kosmotema" # Packages "owner" name. Replace username with your name
+$sfml_tags = "C++, SFML, graphics, multimedia, games, opengl, audio, native, CoApp" # Tags for your packages, "C++, SFML, graphics, multimedia, games, opengl, audio, native, CoApp" by default
 
 # SFML nuget packages 'generation' variables
 $sfml_module_list = "system", "window", "graphics", "audio", "network" # SFML packages, that will be generated
-$sfml_version = "2.5.1" # SFML version, min supported version - 2.2
+$sfml_version = "2.6.0" # SFML version, min supported version - 2.2
 $sfml_platforms = "x86", "x64"
-$sfml_toolchains = "v120", "v140", "v141"
+$sfml_toolchains = "v141", "v142", "v143"
 $sfml_configurations = "debug", "release"
 
 #########################
@@ -36,28 +36,31 @@ $sfml_require_license_acceptance = "false"
 $sfml_summary = "SFML provides a simple interface to the various components of your PC, to ease the development of games and multimedia applications. It is composed of five modules: system, window, graphics, audio and network."
 $sfml_description = "SFML provides a simple interface to the various components of your PC, to ease the development of games and multimedia applications. It is composed of five modules: system, window, graphics, audio and network.
 With SFML, your application can compile and run out of the box on the most common operating systems: Windows, Linux, Mac OS X and soon Android & iOS.
-SFML has official bindings for the C and .Net languages. And thanks to its active community, it is also available in many other languages such as Java, Ruby, Python, Go, and more."
+SFML has official bindings for the C and .Net languages. And thanks to its active community, it is also available in many other languages such as Java, Ruby, Python, Go, and more.
+
+---
+
+Is this package outdated? Report here: https://github.com/kosmotema/sfml-nuget"
 $sfml_changelog = "https://www.sfml-dev.org/changelog.php#sfml-$sfml_version"
 
 # Don't change these values
 $dir = Split-Path $MyInvocation.MyCommand.Path
 $coapp_download_url = "http://coapp.org/pages/releases.html"
 $linking = "static", "dynamic"
-$to_msvc = @{ "v100" = "vc10"; "v110" = "vc11"; "v120" = "vc12"; "v140" = "vc14"; "v141" = "vc15" }
+$to_msvc = @{ "v100" = "vc10"; "v110" = "vc11"; "v120" = "vc12"; "v140" = "vc14"; "v141" = "vc15"; "v142" = "vc16"; "v143" = "vc17" }
 $to_bits = @{ "x86" = "32"; "Win32" = "32" ; "x64" = "64" }
 $dependencies = @{ "window" = "system"; "graphics" = ("window", "system"); "audio" = "system"; "network" = "system" }
-$sfml = "sfml."
+$sfml = "sfml_"
 
 #########################
 
-function PackageHeader($pkgName)
-{
+function PackageHeader($pkgName) {
 	$currentYear = (Get-Date).Year
 	return "configurations {
 	UserPlatformToolset {
 	// Needed because autopackage lacks VS2015 support
 		key = ""PlatformToolset"";
-		choices: ""v120, v140, v141"";
+		choices: ""$($sfml_toolchains -Join ", ")"";
 	};
 }
 
@@ -86,19 +89,14 @@ nuget {
 	}"
 }
 
-function AddMainFile()
-{
+function AddMainFile() {
 	$datas = ""
-	foreach($p in $sfml_platforms)
-	{
-		foreach($v in $sfml_toolchains)
-		{
-			foreach($c in $sfml_configurations)
-			{
+	foreach ($p in $sfml_platforms) {
+		foreach ($v in $sfml_toolchains) {
+			foreach ($c in $sfml_configurations) {
 				$datas += "		[$p,$v,$c] {"
 				$libfile = "			lib: { `${SRC}lib\$p\$v\$c\sfml-main"
-				if ($c -eq "debug")
-				{
+				if ($c -eq "debug") {
 					$libfile += "-d"
 				}
 				$libfile += ".lib };"
@@ -113,26 +111,19 @@ $libfile
 	return $datas
 }
 
-function AddFiles($pkgName)
-{
+function AddFiles($pkgName) {
 	$datas = ""
-	foreach($p in $sfml_platforms)
-	{
-		foreach($v in $sfml_toolchains)
-		{
-			foreach($c in $sfml_configurations)
-			{
-				foreach($l in $linking)
-				{
+	foreach ($p in $sfml_platforms) {
+		foreach ($v in $sfml_toolchains) {
+			foreach ($c in $sfml_configurations) {
+				foreach ($l in $linking) {
 					$datas += "		[$p,$v,$c,$l] {"
 					$libfile = "			lib: { `${SRC}lib\$p\$v\$c\sfml-$pkgName"
 					$binfile = "			bin: { `${SRC}bin\$p\$v\$c\sfml-$pkgName"
-					if ($l -eq "static")
-					{
+					if ($l -eq "static") {
 						$libfile += "-s"
 					}
-					if ($c -eq "debug")
-					{
+					if ($c -eq "debug") {
 						$libfile += "-d"
 						$binfile += "-d"
 					}
@@ -141,8 +132,7 @@ function AddFiles($pkgName)
 					$datas += "
 $libfile"
 
-					if ($l -eq "dynamic")
-					{
+					if ($l -eq "dynamic") {
 						$datas += "
 $binfile"
 					}
@@ -157,18 +147,15 @@ $binfile"
 	return $datas
 }
 
-function AddDependencies($pkgName)
-{
-	if (-not $dependencies.ContainsKey($pkgName))
-	{
+function AddDependencies($pkgName) {
+	if (-not $dependencies.ContainsKey($pkgName)) {
 		return ""
 	}
 	$datas += "
 
 	dependencies {
 		packages : {"
-	foreach($package in $dependencies[$pkgName])
-	{
+	foreach ($package in $dependencies[$pkgName]) {
 		$datas += "
 			$pkg_prefix$sfml$package$pkg_postfix/$sfml_version$pkg_hotfix,"
 	}
@@ -179,8 +166,7 @@ function AddDependencies($pkgName)
 	return $datas
 }
 
-function GeneratePackage($pkgName)
-{
+function GeneratePackage($pkgName) {
 
 	$autopkg = PackageHeader($pkgName)
 	$autopkg += AddDependencies($pkgName)
@@ -192,8 +178,7 @@ function GeneratePackage($pkgName)
 		}
 
 "
-	if ($pkgName -eq "system")
-	{
+	if ($pkgName -eq "system") {
 		$autopkg += "		nestedInclude: {
 			#destination = `${d_include}$include_workaround;
 			""`${SRC}include\**\*""
@@ -208,12 +193,9 @@ function GeneratePackage($pkgName)
 		$autopkg += AddMainFile
 	}
 	$autopkg += AddFiles($pkgName)
-	if ($pkgName -eq "system")
-	{
-		foreach ($p in $sfml_platforms)
-		{
-			foreach ($v in $sfml_toolchains)
-			{
+	if ($pkgName -eq "system") {
+		foreach ($p in $sfml_platforms) {
+			foreach ($v in $sfml_toolchains) {
 				$autopkg += "		[$p,$v] {
 			lib: { `${SRC}ext\lib\$p\$v\*.lib };
 			bin: { `${SRC}ext\bin\$p\$v\*.dll };
@@ -238,22 +220,19 @@ function GeneratePackage($pkgName)
 }
 
 Add-Type -AssemblyName System.IO.Compression.FileSystem
-function Unzip
-{
+function Unzip {
 	param([string]$zipfile, [string]$outpath)
 	[System.IO.Compression.ZipFile]::ExtractToDirectory($zipfile, $outpath)
 }
 
-function CreateDirectory($dirName)
-{
-	if (-not (Test-Path $dirName)){
+function CreateDirectory($dirName) {
+	if (-not (Test-Path $dirName)) {
 		New-Item "$dirName" -ItemType Directory -Force | Out-Null
 	}
 }
 
-function CreateFile($fileName)
-{
-	if (-not (Test-Path $fileName)){
+function CreateFile($fileName) {
+	if (-not (Test-Path $fileName)) {
 		New-Item "$fileName" -ItemType File -Force | Out-Null
 	}
 }
@@ -263,23 +242,19 @@ function CreateFile($fileName)
 #########################
 
 # Checking on installed CoApp Tools
-try
-{
+try {
 	Show-CoAppToolsVersion | Out-Null
 }
-catch
-{
+catch {
 	Write-Host -ForegroundColor Yellow "You need CoApp tools to build NuGet packages!"
 	Read-Host "Press ENTER to open CoApp website or Ctrl-C to exit..."
 	Start-Process $coapp_download_url
 	Exit
 }
 
-if ($pkg_hotfix -ne "")
-{
+if ($pkg_hotfix -ne "") {
 	$pkg_hotfix = $pkg_hotfix.Insert(0, ".")
-	if (($sfml_version) -notmatch "^(\d+)\.(\d+)\.(\d+)$")
-	{
+	if (($sfml_version) -notmatch "^(\d+)\.(\d+)\.(\d+)$") {
 		$pkg_hotfix = $pkg_hotfix.Insert(0, ".0")
 	}
 }
@@ -291,28 +266,22 @@ CreateDirectory("$dir\distfiles")
 CreateDirectory("$dir\build")
 CreateDirectory("$dir\sources\docs")
 
-foreach($p in $sfml_platforms)
-{
-	foreach ($v in $sfml_toolchains)
-	{
+foreach ($p in $sfml_platforms) {
+	foreach ($v in $sfml_toolchains) {
 		$filename = "SFML-$sfml_version-windows-" + $to_msvc[$v] + "-" + $to_bits[$p] + "-bit.zip"
 		$outfile = "$dir\distfiles\$filename"
-		if (-not (Test-Path $outfile))
-		{
+		if (-not (Test-Path $outfile)) {
 			$fileuri = $sfml_download_url + $filename
 			$webclient = New-Object System.Net.WebClient
 			$downloaded = $false
-			while ($downloaded -eq $false)
-			{
-				try
-				{
+			while ($downloaded -eq $false) {
+				try {
 					Write-Host "`nDownloading $filename..."
 					$webclient.DownloadFile($fileuri, $outfile)
 					$downloaded = $true
 					Write-Host -ForegroundColor Green "$filename downloaded"
 				}
-				catch
-				{
+				catch {
 					Write-Warning "An error occurred while downloading the file $fileuri"
 					Write-Host -ForegroundColor Yellow "Press ENTER to try again or Ctrl-C to exit..."
 					Read-Host
@@ -333,11 +302,10 @@ foreach($p in $sfml_platforms)
 		CreateDirectory("$dir\sources\docs\")
 
 		Copy-Item "$zip\include\*" "$dir\sources\include\" -Force -Recurse | Out-Null
-		if ($add_docs -ne $false)
-		{
+		if ($add_docs -ne $false) {
 			Copy-Item "$zip\doc\*" "$dir\sources\docs\" -Force -Recurse | Out-Null
 		}
-		Get-Item "$zip\*" -Include "*.txt","*.md" | Move-Item -Destination "$dir\sources\docs\" -Force | Out-Null
+		Get-Item "$zip\*" -Include "*.txt", "*.md" | Move-Item -Destination "$dir\sources\docs\" -Force | Out-Null
 		Move-Item "$zip\bin\sfml-*-d-2.dll" "$dir\sources\bin\$p\$v\debug\" -Force | Out-Null
 		Move-Item "$zip\bin\sfml-*.dll" "$dir\sources\bin\$p\$v\release\" -Force | Out-Null
 		Move-Item "$zip\bin\*.dll" "$dir\sources\ext\bin\$p\$v\" -Force | Out-Null
@@ -348,19 +316,16 @@ foreach($p in $sfml_platforms)
 	}
 }
 
-if ((Get-ChildItem "$dir\sources\include\" -File -Force).Count -gt 0)
-{
+if ((Get-ChildItem "$dir\sources\include\" -File -Force).Count -gt 0) {
 	$include_workaround = ""
 }
-else
-{
+else {
 	$include_workaround = "SFML\"
 }
 
 Write-Host
 Set-Location "$dir\build"
-foreach($module in $sfml_module_list)
-{
+foreach ($module in $sfml_module_list) {
 	Write-Host "Generating $pkg_prefix$sfml$module$pkg_postfix.autopkg..."
 	GeneratePackage($module)
 }
@@ -369,7 +334,7 @@ Set-Location ..
 New-Item "$dir\repository" -ItemType Directory -Force | Out-Null
 Set-Location "$dir\repository"
 Get-ChildItem "../build/" -Filter *.autopkg | `
-Foreach-Object{
+	Foreach-Object {
 	Write-Host "`nGenerating NuGet package from $_...`n"
 	Write-NuGetPackage ..\build\$_ | Out-Null
 	if ($keep_autopkg -eq $false) {
@@ -380,12 +345,10 @@ Write-Host "`nCleaning..."
 Remove-Item *.symbols.* | Out-Null
 Set-Location ..
 Remove-Item "$dir\temp" -Recurse | Out-Null
-if ($keep_autopkg -eq $false)
-{
+if ($keep_autopkg -eq $false) {
 	Remove-Item "$dir\build" -Recurse | Out-Null
 }
-if ($keep_sources -ne $true)
-{
+if ($keep_sources -ne $true) {
 	Remove-Item "$dir\sources" -Recurse | Out-Null
 }
 Write-Host -ForegroundColor Green "Done! Your packages are available in $dir\repository"
